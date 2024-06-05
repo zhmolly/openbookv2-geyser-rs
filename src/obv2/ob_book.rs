@@ -3,7 +3,7 @@ use std::mem;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::structs::{Account, BotMsg, OpenBook};
+use crate::structs::{Account, BotMsg, OpenBook, OrderBooksData};
 use crate::Extractor;
 use anchor_lang::prelude::Pubkey;
 use async_trait::async_trait;
@@ -82,6 +82,11 @@ impl Extractor for ObV2BooksPlugin {
                 });
             });
 
+        let best = match best_price {
+            Some(price) => Some((price as f64) / self.base_lot_size),
+            None => None,
+        };
+
         tracing::info!(
             "is_buy: {:?}, best_price: {:?}, open_orders: {:?}",
             is_buy,
@@ -89,6 +94,6 @@ impl Extractor for ObV2BooksPlugin {
             books.len()
         );
 
-        Ok(BotMsg::Unimplemented)
+        Ok(BotMsg::ObV2Books(OrderBooksData { best, books }))
     }
 }
