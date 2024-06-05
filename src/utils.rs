@@ -1,10 +1,18 @@
 use anchor_lang::AnchorDeserialize;
+use openbook_v2::state::Side;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use std::str::FromStr;
 
-pub fn token_factor(decimals: u8) -> f64 {
+pub fn token_decimals(decimals: u8) -> f64 {
     (10u64.pow(decimals as u32)) as f64
+}
+
+pub fn is_buy(side: Side) -> bool {
+    match side {
+        Side::Ask => false,
+        Side::Bid => true,
+    }
 }
 
 pub fn extract_transfer_amount(data: Vec<u8>) -> u64 {

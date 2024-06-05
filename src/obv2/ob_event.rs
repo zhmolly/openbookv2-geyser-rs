@@ -1,18 +1,18 @@
-use bytemuck;
+use bytemuck::{self, cast_ref};
 use std::mem;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::structs::{Account, BotMsg, ObV2BooksData, OpenBook};
-use crate::utils::token_decimals;
+use crate::structs::{Account, BotMsg, ObV2Cancel, ObV2Event, ObV2Fill};
+use crate::utils::{is_buy, token_decimals};
 use crate::Extractor;
 use anchor_lang::prelude::Pubkey;
 use async_trait::async_trait;
-use openbook_v2::state::{BookSide, Side};
+use openbook_v2::state::{BookSide, EventHeap, EventType, FillEvent, OutEvent, Side};
 use solana_client::nonblocking::rpc_client::RpcClient;
 
 #[derive(Clone, Debug)]
-pub struct ObV2BooksPlugin {
+pub struct ObV2EventsPlugin {
     pub indicator_name: String,
     pub account: String,
     pub program_id: String,
@@ -23,7 +23,7 @@ pub struct ObV2BooksPlugin {
 }
 
 #[async_trait]
-impl Extractor for ObV2BooksPlugin {
+impl Extractor for ObV2EventsPlugin {
     fn name(&self) -> String {
         self.indicator_name.clone()
     }
@@ -59,38 +59,47 @@ impl Extractor for ObV2BooksPlugin {
 
     fn extract(&mut self, account: &mut Account) -> anyhow::Result<BotMsg> {
         let data = &account.data;
-        let bookside = bytemuck::from_bytes::<BookSide>(&data[8..mem::size_of::<BookSide>() + 8]);
+        let event_heap =
+            bytemuck::from_bytes::<EventHeap>(&data[8..mem::size_of::<EventHeap>() + 8]);
 
-        let is_buy = match bookside.side() {
-            Side::Ask => false,
-            Side::Bid => true,
-        };
-        let now_ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-        let best_price = bookside.best_price(now_ts, None);
+        let mut events: Vec<ObV2Event> = vec![];
+
         let price_factor = token_decimals(self.base_decimals - self.quote_decimals)
             * self.quote_lot_size as f64
             / self.base_lot_size as f64;
         let base_factor = self.base_lot_size as f64 / token_decimals(self.base_decimals);
 
-        let mut books: Vec<OpenBook> = vec![];
+        for node in event_heap.nodes {
+            if node.is_free() {
+                continue;
+            }
 
-        bookside
-            .iter_all_including_invalid(now_ts, None)
-            .for_each(|order| {
-                books.push(OpenBook {
-                    order_id: order.node.key,
-                    owner: order.node.owner.to_string(),
-                    price: (order.price_lots as f64) * price_factor,
-                    amount: (order.node.quantity as f64) * base_factor,
-                    is_buy,
-                });
-            });
+            let event = node.event;
 
-        let best = match best_price {
-            Some(price) => Some((price as f64) * price_factor),
-            None => None,
-        };
+            match EventType::try_from(event.event_type).unwrap() {
+                EventType::Fill => {
+                    let fill: &FillEvent = cast_ref(&event);
+                    events.push(ObV2Event::Fill(ObV2Fill {
+                        is_buy: is_buy(fill.taker_side()),
+                        taker: fill.taker.to_string(),
+                        maker: fill.maker.to_string(),
+                        order_id: fill.maker_client_order_id,
+                        price: (fill.price as f64) * price_factor,
+                        amount: fill.quantity as f64 * base_factor,
+                    }));
+                }
+                EventType::Out => {
+                    let out: &OutEvent = cast_ref(&event);
+                    events.push(ObV2Event::Cancel(ObV2Cancel {
+                        is_buy: is_buy(out.side()),
+                        owner: out.owner.to_string(),
+                        seq_num: out.seq_num,
+                        amount: out.quantity as f64 * base_factor,
+                    }));
+                }
+            }
+        }
 
-        Ok(BotMsg::ObV2Books(ObV2BooksData { best, books }))
+        Ok(BotMsg::Unimplemented)
     }
 }

@@ -6,7 +6,7 @@ pub mod utils;
 use crate::structs::{Account, MessageTransaction};
 use crate::subscribe::subscribe_geyser;
 use async_trait::async_trait;
-use obv2::ObV2BooksPlugin;
+use obv2::{ObV2BooksPlugin, ObV2EventsPlugin};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use std::env;
 use std::sync::Arc;
@@ -55,10 +55,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Bids
     extractors.push(Box::new(ObV2BooksPlugin {
-        indicator_name: "ob_v2_sol_usdc_asks".to_string(),
+        indicator_name: "ob_v2_sol_usdc_bids".to_string(),
         account: "53v47CBoaKwoM8tSEDN4oNyCc2ZJenDeuhMJTEw7fL2M".to_string(),
         program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),
-        oos_key: "FdrprVmTtB8ymE4RQ7ugYHQtDhDy6hDhpDviWEuuvMtj".to_string(),
         base_decimals: 9,
         quote_decimals: 6,
         base_lot_size: 1000000,
@@ -67,10 +66,20 @@ async fn main() -> anyhow::Result<()> {
 
     // Asks
     extractors.push(Box::new(ObV2BooksPlugin {
-        indicator_name: "ob_v2_sol_usdc_bids".to_string(),
+        indicator_name: "ob_v2_sol_usdc_asks".to_string(),
         account: "Ad5skEiFoaeA27G3UhbpuwnFBCvmuuGEyoiijZhcd5xX".to_string(),
         program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),
-        oos_key: "FdrprVmTtB8ymE4RQ7ugYHQtDhDy6hDhpDviWEuuvMtj".to_string(),
+        base_decimals: 9,
+        quote_decimals: 6,
+        base_lot_size: 1000000,
+        quote_lot_size: 1,
+    }));
+
+    // Events (Fill/Cancel)
+    extractors.push(Box::new(ObV2EventsPlugin {
+        indicator_name: "ob_v2_sol_usdc_events".to_string(),
+        account: "Ad5skEiFoaeA27G3UhbpuwnFBCvmuuGEyoiijZhcd5xX".to_string(),
+        program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),
         base_decimals: 9,
         quote_decimals: 6,
         base_lot_size: 1000000,

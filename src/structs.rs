@@ -206,35 +206,40 @@ pub struct OpenBook {
     pub price: f64,
     pub amount: f64,
 }
+
 #[derive(Debug)]
-pub struct OrderBooksData {
+pub struct ObV2Fill {
+    pub taker: String,
+    pub maker: String,
+    pub is_buy: bool,
+    pub price: f64,
+    pub amount: f64,
+    pub order_id: u64,
+}
+
+#[derive(Debug)]
+pub struct ObV2Cancel {
+    pub seq_num: u64,
+    pub owner: String,
+    pub is_buy: bool,
+    pub amount: f64,
+}
+
+#[derive(Debug)]
+pub enum ObV2Event {
+    Fill(ObV2Fill),
+    Cancel(ObV2Cancel),
+}
+
+#[derive(Debug)]
+pub struct ObV2BooksData {
     pub best: Option<f64>,
     pub books: Vec<OpenBook>,
 }
 
 #[derive(Debug)]
-pub struct OrderFillData {
-    pub owner: String,
-    pub order_id: Option<u128>,
-    pub is_buy: bool,
-    pub price: f64,
-    pub amount: f64,
-    pub slot: u64,
-}
-#[derive(Debug)]
-pub struct OrderCancelData {
-    pub owner: String,
-    pub order_id: Option<u128>,
-    pub is_buy: bool,
-    pub price: f64,
-    pub amount: f64,
-    pub slot: u64,
-}
-
-#[derive(Debug)]
 pub enum BotMsg {
-    ObV2Books(OrderBooksData),
-    ObV2Fills(Vec<OrderFillData>),
-    ObV2Cancels(Vec<OrderCancelData>),
+    ObV2Books(ObV2BooksData),
+    ObV2Events(Vec<ObV2Event>),
     Unimplemented,
 }
