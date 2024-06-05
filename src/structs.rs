@@ -199,9 +199,17 @@ impl From<SubscribeUpdateBlockMeta> for ParsedBlock {
 }
 
 #[derive(Debug)]
-pub struct OpenOrderData {
+pub struct OpenBook {
+    pub owner: String,
+    pub order_id: u128,
+    pub is_buy: bool,
+    pub price: f64,
+    pub amount: f64,
+}
+#[derive(Debug)]
+pub struct OrderBooksData {
     pub best: Option<f64>,
-    pub open: Vec<(u128, f64, f64)>,
+    pub books: Vec<OpenBook>,
 }
 
 #[derive(Debug)]
@@ -225,8 +233,7 @@ pub struct OrderCancelData {
 
 #[derive(Debug)]
 pub enum BotMsg {
-    ObV2Asks(OpenOrderData),
-    ObV2Bids(OpenOrderData),
+    ObV2Books(OrderBooksData),
     ObV2Fills(Vec<OrderFillData>),
     ObV2Cancels(Vec<OrderCancelData>),
     Unimplemented,

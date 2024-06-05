@@ -6,7 +6,7 @@ pub mod utils;
 use crate::structs::{Account, MessageTransaction};
 use crate::subscribe::subscribe_geyser;
 use async_trait::async_trait;
-use obv2::{ObV2AskPlugin, ObV2BidPlugin};
+use obv2::ObV2BooksPlugin;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use std::env;
 use std::sync::Arc;
@@ -53,7 +53,8 @@ async fn main() -> anyhow::Result<()> {
     let mut parsers = Vec::new();
     let mut extractors: Vec<Box<dyn Extractor>> = Vec::new();
 
-    extractors.push(Box::new(ObV2AskPlugin {
+    // Bids
+    extractors.push(Box::new(ObV2BooksPlugin {
         indicator_name: "ob_v2_sol_usdc_asks".to_string(),
         account: "53v47CBoaKwoM8tSEDN4oNyCc2ZJenDeuhMJTEw7fL2M".to_string(),
         program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),
@@ -64,7 +65,8 @@ async fn main() -> anyhow::Result<()> {
         quote_lot_size: 1,
     }));
 
-    extractors.push(Box::new(ObV2BidPlugin {
+    // Asks
+    extractors.push(Box::new(ObV2BooksPlugin {
         indicator_name: "ob_v2_sol_usdc_bids".to_string(),
         account: "Ad5skEiFoaeA27G3UhbpuwnFBCvmuuGEyoiijZhcd5xX".to_string(),
         program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),

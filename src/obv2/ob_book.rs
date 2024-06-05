@@ -1,13 +1,17 @@
+use bytemuck;
+use std::mem;
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::structs::{Account, BotMsg, OpenOrderData};
+use crate::structs::{Account, BotMsg, OpenBook};
 use crate::Extractor;
+use anchor_lang::prelude::Pubkey;
 use async_trait::async_trait;
+use openbook_v2::state::{BookSide, Side};
 use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_sdk::pubkey::Pubkey;
 
 #[derive(Clone, Debug)]
-pub struct ObV2BidPlugin {
+pub struct ObV2BooksPlugin {
     pub oos_key: String,
     pub indicator_name: String,
     pub account: String,
@@ -19,7 +23,7 @@ pub struct ObV2BidPlugin {
 }
 
 #[async_trait]
-impl Extractor for ObV2BidPlugin {
+impl Extractor for ObV2BooksPlugin {
     fn name(&self) -> String {
         self.indicator_name.clone()
     }
@@ -54,44 +58,37 @@ impl Extractor for ObV2BidPlugin {
     }
 
     fn extract(&mut self, account: &mut Account) -> anyhow::Result<BotMsg> {
-        let data = account.data;
-        let books: RefMut<BookSide> =
-            bytemuck::from_bytes_mut(&mut data[8..mem::size_of::<BookSide>() + 8]);
+        let data = &account.data;
+        let bookside = bytemuck::from_bytes::<BookSide>(&data[8..mem::size_of::<BookSide>() + 8]);
 
-        let leaves = data.traverse(true);
-
-        let info = ObMarketInfo {
-            base_decimals: self.base_decimals,
-            base_lot_size: self.base_lot_size,
-            quote_decimals: self.quote_decimals,
-            quote_lot_size: self.quote_lot_size,
+        let is_buy = match bookside.side() {
+            Side::Ask => false,
+            Side::Bid => true,
         };
+        let now_ts = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+        let best_price = bookside.best_price(now_ts, None);
 
-        let mut best_bid = None;
-        let mut bids = Vec::new();
-        for l in leaves {
-            let oid = l.key;
-            let p = f64::from(readable_price(l.price() as f64, &info));
-            let q = (l.quantity() as f64) / (info.quote_lot_size as f64);
-            let owner = load_pubkey(l.owner);
-            if best_bid.is_none() {
-                best_bid = Some(p);
-            }
-            if owner.to_string() == self.oos_key {
-                bids.push((oid, p, q));
-            }
-        }
+        let mut books: Vec<OpenBook> = vec![];
 
-        tracing::info!("best bid: {:?}", best_bid);
+        bookside
+            .iter_all_including_invalid(now_ts, None)
+            .for_each(|order| {
+                books.push(OpenBook {
+                    order_id: order.node.key,
+                    owner: order.node.owner.to_string(),
+                    price: order.price_lots as f64,
+                    amount: order.node.quantity as f64,
+                    is_buy,
+                });
+            });
 
-        Ok(BotMsg::ObV1Bids(OpenOrderData {
-            best: best_bid,
-            open: bids,
-        }))
+        tracing::info!(
+            "is_buy: {:?}, best_price: {:?}, open_orders: {:?}",
+            is_buy,
+            best_price,
+            books.len()
+        );
 
-        Ok(BotMsg::ObV2Bids(OpenOrderData {
-            best: None,
-            open: vec![],
-        }))
+        Ok(BotMsg::Unimplemented)
     }
 }
