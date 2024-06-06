@@ -1,3 +1,4 @@
+use anchor_lang::AnchorDeserialize;
 use anchor_lang::Discriminator;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use bytemuck::{self, cast_ref};
@@ -5,6 +6,8 @@ use openbook_v2::logs::{FillLog, OpenOrdersPositionLog, SettleFundsLog};
 use openbook_v2::state::FillEvent;
 
 use crate::structs::{Account, BotMsg, MessageTransaction, ObV2Cancel, ObV2Event, ObV2Fill};
+use crate::utils::is_buy;
+use crate::utils::token_decimals;
 use crate::Parser;
 use async_trait::async_trait;
 
@@ -82,6 +85,12 @@ impl Parser for ObV2TransactionsPlugin {
         }
         */
 
+        let mut events: Vec<ObV2Event> = vec![];
+        let price_factor = token_decimals(self.base_decimals - self.quote_decimals)
+            * self.quote_lot_size as f64
+            / self.base_lot_size as f64;
+        let base_factor = self.base_lot_size as f64 / token_decimals(self.base_decimals);
+
         // Check logs
         let mut start_idx: i16 = -1;
         for (idx, log) in transaction.logs.iter().enumerate() {
@@ -105,6 +114,17 @@ impl Parser for ObV2TransactionsPlugin {
                         let discriminator = &data[0..8];
                         if discriminator == FillLog::DISCRIMINATOR {
                             tracing::info!("fill order");
+
+                            let fill = FillLog::deserialize(&mut &data[8..])?;
+
+                            events.push(ObV2Event::Fill(ObV2Fill {
+                                is_buy: fill.taker_side == 0,
+                                taker: fill.taker.to_string(),
+                                maker: fill.maker.to_string(),
+                                order_id: fill.maker_client_order_id,
+                                price: (fill.price as f64) * price_factor,
+                                amount: fill.quantity as f64 * base_factor,
+                            }));
                         } else if discriminator == OpenOrdersPositionLog::DISCRIMINATOR {
                             tracing::info!("positions order");
                         } else if discriminator == SettleFundsLog::DISCRIMINATOR {
@@ -119,6 +139,12 @@ impl Parser for ObV2TransactionsPlugin {
                 }
             }
         }
-        Ok(BotMsg::Unimplemented)
+
+        if events.len() > 0 {
+            tracing::info!("total events: {:?}", events.len());
+            Ok(BotMsg::ObV2Events(events))
+        } else {
+            Ok(BotMsg::Unimplemented)
+        }
     }
 }
