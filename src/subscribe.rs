@@ -166,7 +166,7 @@ pub async fn subscribe_geyser(
                                                 .parse(&transaction)
                                             {
                                                 Ok(data) => {
-                                                    tracing::info!("{:?}", data);
+                                                    // tracing::info!("{:?}", data);
                                                 }
                                                 Err(e) => {
                                                     tracing::info!("Subscribe error: {}", e)

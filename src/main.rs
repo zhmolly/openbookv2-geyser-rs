@@ -6,7 +6,7 @@ pub mod utils;
 use crate::structs::{Account, MessageTransaction};
 use crate::subscribe::subscribe_geyser;
 use async_trait::async_trait;
-use obv2::{ObV2BooksPlugin, ObV2EventsPlugin};
+use obv2::{ObV2BooksPlugin, ObV2EventsPlugin, ObV2TransactionsPlugin};
 use solana_client::nonblocking::rpc_client::RpcClient;
 use std::env;
 use std::sync::Arc;
@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
         // .without_time()
         .init();
 
-    let mut parsers = Vec::new();
+    let mut parsers: Vec<Box<dyn Parser>> = Vec::new();
     let mut extractors: Vec<Box<dyn Extractor>> = Vec::new();
 
     // Bids
@@ -79,6 +79,17 @@ async fn main() -> anyhow::Result<()> {
     extractors.push(Box::new(ObV2EventsPlugin {
         indicator_name: "ob_v2_sol_usdc_events".to_string(),
         account: "F7s6bScqRXB2gsU6s8QHSXJTmpS5t6SfVBs4V2k3HNKn".to_string(),
+        program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),
+        base_decimals: 9,
+        quote_decimals: 6,
+        base_lot_size: 1000000,
+        quote_lot_size: 1,
+    }));
+
+    // Transactions (place_order, cancel_order)
+    parsers.push(Box::new(ObV2TransactionsPlugin {
+        indicator_name: "ob_v2_sol_usdc_txs".to_string(),
+        account: "CFSMrBssNG8Ud1edW59jNLnq2cwrQ9uY5cM3wXmqRJj3".to_string(),
         program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),
         base_decimals: 9,
         quote_decimals: 6,

@@ -100,8 +100,11 @@ impl Extractor for ObV2EventsPlugin {
             }
         }
 
-        tracing::info!("total events: {:?}", events.len());
-
-        Ok(BotMsg::ObV2Events(events))
+        if events.len() > 0 {
+            tracing::info!("total events: {:?}", events.len());
+            Ok(BotMsg::ObV2Events(events))
+        } else {
+            Ok(BotMsg::Unimplemented)
+        }
     }
 }
