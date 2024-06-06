@@ -38,7 +38,7 @@ pub async fn subscribe_geyser(
     for extractor in extractors.iter_mut() {
         match extractor.load(&client).await {
             Ok(data) => {
-                tracing::info!("{:?}", data);
+                // tracing::info!("{:?}", data);
             }
             Err(_) => {}
         }
@@ -141,7 +141,7 @@ pub async fn subscribe_geyser(
                                                 Some(extractor) => {
                                                     match extractor.extract(&mut account) {
                                                         Ok(data) => {
-                                                            tracing::info!("{:?}", data);
+                                                            // tracing::info!("{:?}", data);
                                                         }
                                                         Err(e) => {
                                                             tracing::error!(

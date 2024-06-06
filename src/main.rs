@@ -78,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
     // Events (Fill/Cancel)
     extractors.push(Box::new(ObV2EventsPlugin {
         indicator_name: "ob_v2_sol_usdc_events".to_string(),
-        account: "Ad5skEiFoaeA27G3UhbpuwnFBCvmuuGEyoiijZhcd5xX".to_string(),
+        account: "F7s6bScqRXB2gsU6s8QHSXJTmpS5t6SfVBs4V2k3HNKn".to_string(),
         program_id: "opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb".to_string(),
         base_decimals: 9,
         quote_decimals: 6,

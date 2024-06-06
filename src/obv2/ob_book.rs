@@ -91,6 +91,13 @@ impl Extractor for ObV2BooksPlugin {
             None => None,
         };
 
+        tracing::info!(
+            "is_buy: {:?}, best: {:?}, books: {:?}",
+            is_buy,
+            best,
+            books.len()
+        );
+
         Ok(BotMsg::ObV2Books(ObV2BooksData { best, books }))
     }
 }
